@@ -13,4 +13,4 @@ At the end the focus will be on specific zones of the US territory, the ones wit
 In this repository, there are two files:
 
 - `script_code.Rmd`: R Markdown notebook with the source code for the analysis;
-- `report.pdf`: a report in which we summerize the analysis process and the statistical results.
+- `report.pdf`: a report in which we summarize the analysis process and the statistical results.
