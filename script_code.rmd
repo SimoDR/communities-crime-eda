@@ -1,0 +1,1231 @@
+---
+title: "Communities and Violent Crimes study over the US population"
+author: "Matteo Bergamaschi, Simone De Renzis, Andrea Marchini"
+font: 12pt
+output:
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    number_sections: yes
+    highlight: tango
+    latex_engine: xelatex
+  html_document:
+    toc: true
+    number_sections: true
+urlcolor: blue
+---
+
+```{r include = FALSE}
+library(formatR)
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=70),tidy=TRUE)
+knitr::knit_hooks$set(crop = knitr::hook_pdfcrop)
+```
+
+
+
+\pagebreak
+
+# Introduction
+
+In this report we perform a study of social aspects of the population of the United States of America, focusing on their influence over the number of violent crimes committed in every community. Various categories of features are considered, from the ethnic composition to the economic conditions of the different communities, from the level of education of people to the family background of children.
+
+Through this paper we will analyze the dataset and its features, in order to find out which of them are more linked together and which ones have more influence over the total number of violent crimes. Several statistical tools will be used to train different regressors, in order to predict how many violent crimes will occur in a given community. Among the most relevant features we discovered that the family background plays a major role, making the rate of children with just one parent one of the most important factors, along with the average income of the population.
+
+The second question aimed to find if there is a connection between the ethnic composition of communities and the number of violent crimes reported in that community: in particular we compared how the situation changes when the population is majority of African-american ethnicity, and Caucasian ethnicity. We discovered that the African-american ethnicity is associated with features that corresponds to a high level of crime, the opposite is true for the Caucasian ethnicity, and that by filtering out this "confounding" factors, the criminality rate is mostly independent from the ethnicity. This proved that the higher criminality rate that is reported in communities with a majority of African-american ethnicity is actually due to the worse socio-economic condition for the African-american population, with respect to people of Caucasian heritage.
+
+At the end the focus will be on specific zones of the US territory, the ones with a peculiar presence of African-americans or people of Caucasian heritage.
+
+
+# Cleaning and filtering data
+
+The dataset that we analyzed through this report is called "Communities and Crime" and can be found at the UCI website at the following link: <http://archive.ics.uci.edu/ml/machine-learning-databases/00211/CommViolPredUnnormalizedData.txt>.
+
+```{r}
+
+base <- "http://archive.ics.uci.edu/ml/machine-learning-databases/"
+file <- "00211/CommViolPredUnnormalizedData.txt"
+communities.data = read.csv(paste(base,file,sep=""),
+                            header=FALSE,
+                            na.strings = "?")
+```
+
+```{r include = FALSE}
+colnames(communities.data) <- c("communityname", "state", "countyCode", "communityCode", "fold", "population", "householdsize", "racepctblack", "racePctWhite","racePctAsian", "racePctHisp", "agePct12t21", "agePct12t29","agePct16t24", "agePct65up", "numbUrban", "pctUrban", "medIncome","pctWWage", "pctWFarmSelf", "pctWInvInc", "pctWSocSec", "pctWPubAsst", "pctWRetire", "medFamInc", "perCapInc", "whitePerCap", "blackPerCap", "indianPerCap", "AsianPerCap", "OtherPerCap", "HispPerCap", "NumUnderPov", "PctPopUnderPov", "PctLess9thGrade", "PctNotHSGrad", "PctBSorMore", "PctUnemployed", "PctEmploy", "PctEmplManu", "PctEmplProfServ", "PctOccupManu", "PctOccupMgmtProf", "MalePctDivorce", "MalePctNevMarr", "FemalePctDiv", "TotalPctDiv", "PersPerFam", "PctFam2Par", "PctKids2Par", "PctYoungKids2Par", "PctTeen2Par", "PctWorkMomYoungKids", "PctWorkMom", "NumKidsBornNeverMar", "PctKidsBornNeverMar", "NumImmig", "PctImmigRecent", "PctImmigRec5", "PctImmigRec8", "PctImmigRec10", "PctRecentImmig", "PctRecImmig5", "PctRecImmig8", "PctRecImmig10", "PctSpeakEnglOnly", "PctNotSpeakEnglWell", "PctLargHouseFam", "PctLargHouseOccup", "PersPerOccupHous", "PersPerOwnOccHous", "PersPerRentOccHous", "PctPersOwnOccup", "PctPersDenseHous", "PctHousLess3BR", "MedNumBR", "HousVacant", "PctHousOccup", "PctHousOwnOcc", "PctVacantBoarded", "PctVacMore6Mos", "MedYrHousBuilt", "PctHousNoPhone", "PctWOFullPlumb", "OwnOccLowQuart", "OwnOccMedVal", "OwnOccHiQuart","OwnOccQrange", "RentLowQ", "RentMedian", "RentHighQ", "RentQrange","MedRent", "MedRentPctHousInc", "MedOwnCostPctInc", "MedOwnCostPctIncNoMtg", "NumInShelters", "NumStreet", "PctForeignBorn", "PctBornSameState", "PctSameHouse85", "PctSameCity85", "PctSameState85", "LemasSwornFT", "LemasSwFTPerPop", "LemasSwFTFieldOps", "LemasSwFTFieldPerPop", "LemasTotalReq", "LemasTotReqPerPop", "PolicReqPerOffic", "PolicPerPop", "RacialMatchCommPol", "PctPolicWhite", "PctPolicBlack", "PctPolicHisp", "PctPolicAsian", "PctPolicMinor","OfficAssgnDrugUnits", "NumKindsDrugsSeiz", "PolicAveOTWorked", "LandArea", "PopDens", "PctUsePubTrans", "PolicCars", "PolicOperBudg", "LemasPctPolicOnPatr", "LemasGangUnitDeploy", "LemasPctOfficDrugUn", "PolicBudgPerPop","murders","murdPerPop","rapes","rapesPerPop","robberies","robbbPerPop","assaults","assaultPerPop","burglaries","burglPerPop","larcenies","larcPerPop","autoTheft","autoTheftPerPop","arsons","arsonsPerPop","ViolentCrimesPerPop","nonViolPerPop")
+```
+
+This dataset contains 2215 records of different communities, located in almost every state of the US, with 147 features describing social aspects of this different places. Note that a state is composed of more communities. Socio-economic data refers to the 1990's US census, law enforcement data from the 1990 US LEMAS survey and crime data from the 1995 FBI UCR. To see the complete list of the variables that will be part of our analysis and their meaning, please refer to Appendix at the end of this document. A brief summary of the features will be provided in the following sections.
+
+To reduce the dimension of our dataset, we deleted several features such as the percentage of immigrants who immigrated within last 3, 5 and 8 years, which have not been considered of much interested for the study. There are also features which are presented with both a value and a percentage over the total number. For these cases, one of the two is dropped.
+
+```{r}
+drops <- c("countyCode","communityCode","fold","agePct65up","numbUrban","medFamInc","perCapInc","NumUnderPov","PersPerFam","PctImmigRecent","PctImmigRec5","PctImmigRec8","PctImmigRec10","PctRecImmig5","PctRecImmig8","PctRecImmig10","PctNotSpeakEnglWell","MedNumBR","HousVacant","PctHousOwnOcc","PctVacantBoarded","PctVacMore6Mos","MedYrHousBuilt","PctForeignBorn","LemasSwornFT","LemasSwFTFieldOps","LemasTotalReq","PolicReqPerOffic","PolicOperBudg","LemasPctPolicOnPatr","LemasGangUnitDeploy","LemasPctOfficDrugUn","NumKindsDrugsSeiz","LandArea","OwnOccQrange","RentQrange","murders","murdPerPop","rapes","rapesPerPop","robberies","robbbPerPop","assaults","assaultPerPop","burglaries","burglPerPop","larcenies","larcPerPop","autoTheft","autoTheftPerPop","arsons","arsonsPerPop","nonViolPerPop","NumKidsBornNeverMar")
+communities <- communities.data[ , !(names(communities.data) %in% drops)]
+```
+
+The second issues that we faced regards missing data. In fact, features as the rate of the different ethnicity in the local police and the number of officers assigned to special drug units have a significantly high number of missing (NA) values. These features mostly come from the LEMAS survey, which considered departments with at least 100 officiers, plus a random sample of other departments. So these features have not been taken into account for this study. In addition to that, 221 records do not present a value for the target (number of violent crimes per population), thus decreasing the number of observations from 2215 to 1994.
+
+```{r}
+#detect columns with NA values
+na <- colSums(is.na(communities))
+na[which(na>0)]
+
+communities <- communities[is.na(communities$ViolentCrimesPerPop) <= 0,]
+```
+
+```{r}
+#drop columns with NA values
+drops <- c("OtherPerCap","LemasSwFTPerPop","LemasSwFTFieldPerPop","LemasTotReqPerPop","RacialMatchCommPol","PolicPerPop","PctPolicWhite","PctPolicBlack","PctPolicHisp","PctPolicAsian","PctPolicMinor","OfficAssgnDrugUnits","PolicAveOTWorked","PolicCars","PolicBudgPerPop")
+communities <- communities[ , !(names(communities) %in% drops)]
+
+```
+
+
+
+The final dataset is made of 1994 records and 78 features. Only few features are not numerical data, such as the state or the name of the community.
+
+The features of this dataset can be grouped into these categories:
+
+-   `Names`: string of characters providing the name of the communities and the abbreviation code of the state;
+
+-   `Population`: feature which provides the population of a given community;
+
+-   `Ethnicity`: features regarding the composition of the communities as the percentage of different ethnic groups over the total population;
+
+-   `Age`: features regarding the distribution of the people in age ranges;
+
+-   `Income`: features which details how people earn a living, from the percentage of households who have investments to the rate of people under the poverty level;
+
+-   `Education`: features which explain the level of education of the community;
+
+-   `Employment`: rates of people in the labor force with a job and their distribution across several sectors;
+
+-   `Family`: features regarding rates of divorce;
+
+-   `Children`: features regarding the conditions of kids in their families;
+
+-   `Immigrants`: features regarding regular immigrants;
+
+-   `Households`: attributes regarding quality of life in the houses, like the sanitary conditions or the mean number of people living in the same flat;
+
+-   `Homeless`: features describing number of homeless people.
+
+## Defining data sets for modelling
+
+In order to create different models to predict the criminality rate of a given community, the dataset is split between a train set, with the 90% of the observations, and a test set, on which to perform predictions, consisting in 200 records (10%). We decided to perform the splitting at the very beginning of our elaboration, to assure that in the phase of variable selection no information is spilled to the test set which will then be used to assess the ability of our model to predict on new data.
+
+This split is performed by ordering the dataset alphabetically by state, and extracting one record every ten to put it in the test set. This procedure ensures to have an high variety of states and communities. in both sets.
+
+More in detail:
+
+-   `communities`: dataset that has been cleaned from NA values
+
+    -   `communities.test`: test set for `communities`
+
+-   `communities.mod`: dataset with only predictive features
+
+    -   `communities.mod.test`: test set for `communities.mod`
+
+-   `communities.lm`: dataset with only predictive features (and no response variable)
+
+    -   `communities.lm.test`: test set for `communities.lm`
+
+```{r}
+
+communities.tt <- communities #used later for modelling on zones
+tmp.ordered <- communities[order(communities$state),] # sort by state
+sampler <- seq(1, nrow(tmp.ordered), 10) # indexes: 1 every 10 rows
+communities.test <- tmp.ordered[sampler,] # pick 1 every 10 rows
+communities <- tmp.ordered[-sampler,] # pick the remaining
+communities.test <- communities.test[order(as.numeric(rownames(communities.test))),] 
+communities <- communities[order(as.numeric(rownames(communities))),]
+```
+
+The small number of not numerical features is now dropped, in order to deal exclusively with predictive features.
+
+```{r}
+drops <- c("state","communityname")
+communities.mod <- communities[ , !(names(communities) %in% drops)]
+communities.mod.test <- communities.test[ , !(names(communities.test) %in% drops)]
+
+drops <- c("state","communityname","ViolentCrimesPerPop")
+communities.lm <- communities[ , !(names(communities) %in% drops)]
+communities.lm.test <- communities.test[ , !(names(communities.test) %in% drops)]
+```
+
+## Scaling all variables
+
+In order to visualize the distribution of data in every feature, histograms are displayed.
+
+```{r,fig.width=12, fig.height=13}
+#plot histograms of first 24 features
+par(mfrow=c(6,4))
+for (i in c(1:24)){
+  hist(data.matrix(communities.mod[i]),
+       xlab=names(communities.mod[i]),
+       main=NULL,
+       cex.lab=1.6,
+       breaks=100)
+}
+```
+
+```{r,fig.width=12, fig.height=13}
+#plot histograms of features between 25 and 48
+par(mfrow=c(6,4))
+for (i in c(25:48)){
+  hist(data.matrix(communities.mod[i]),
+       xlab=names(communities.mod[i]),
+       main=NULL,
+       cex.lab=1.6,
+       breaks=100)
+}
+
+```
+
+```{r,fig.width=12, fig.height=13}
+#plot histogram of remaining features
+par(mfrow=c(7,4))
+for (i in c(49:76)){
+  hist(data.matrix(communities.mod[i]),
+       xlab=names(communities.mod[i]),
+       main=NULL,
+       cex.lab=1.6,
+       breaks=100)
+}
+par(mfrow=c(1,1))
+```
+
+As we can see from the plots, features lie in different ranges, also because a great part of them are percentages. In order to have all features in the same range, a preprocessing technique is applied, which scales values in the range $[0;1]$.
+
+
+
+```{r message=FALSE, warning=FALSE, warning=FALSE, message=FALSE}
+library(caret)
+
+#normalization of datasets
+
+pp = preProcess(communities, method = "range") 
+communities <- predict(pp, communities)
+communities.test <- predict(pp, communities.test)
+
+pp = preProcess(communities.mod, method = "range")
+communities.mod <- predict(pp, communities.mod)
+communities.mod.test <- predict(pp, communities.mod.test)
+
+pp = preProcess(communities.lm, method = "range")
+communities.lm <- predict(pp, communities.lm)
+communities.lm.test <- predict(pp, communities.lm.test)
+
+attach(communities)
+```
+
+
+
+
+\newpage
+
+# Residual analysis
+
+## Original data
+
+After having cleaned the dataset from NA values, reduced the features number and normalized numerical values, a linear regression is provided, in order to determine a baseline of model fitting, before applying further and more advanced data transformations and regressions.
+
+```{r}
+mod.out <- lm(ViolentCrimesPerPop~., data=communities.lm)
+summary(mod.out)
+```
+
+The value observed for $R^2$ is 0.6716, while its adjusted version, $\bar{R}^2$, has value 0.6572.
+
+The following 4 plots regard the behaviour of the linear model.
+
+```{r, fig.width=8, fig.height=6}
+#plots regarding residual analysis
+
+par(mfrow=c(2,2))
+mod.out <- lm(ViolentCrimesPerPop~., data=communities.lm)
+plot(mod.out)
+par(mfrow=c(1,1))
+```
+
+From the first plot we can see that residuals are almost horizontally distributed, with few values which lie far from the red line.
+
+The Q-Q plot tells that the standardized residuals do not follow too well the assumption of normal distribution, given the strong tails that diverge from the theoretical line. We will try to handle this issue in the following sections.
+
+From the Scale-Location graph we see that residuals are not so much equally distributed in all its range, thus not complying with the assumption of equal variance.
+
+The last graph shows the presence of many outliers, the two most relevant corresponding to the records 128 and 22.
+
+## Log transform of response variable
+
+A way to deal with the non compliance of the residuals with the hypothesis of normal distribution is to transform the response variable using a non linear function, in this case the choice is the logarithmic function. In order to handle the presence of 0's values in the response variable, the constant value $1$ has been added to it before taking the logarithm.
+
+```{r}
+#re-train the model applying the log to target values
+
+ViolentCrimesPerPop.log <- log(ViolentCrimesPerPop+1) 
+reg.out <- lm(ViolentCrimesPerPop.log~., data=communities.lm)
+summary(reg.out)$r.squared
+summary(reg.out)$adj.r.squared
+```
+
+The transformation of data trough a logarithmic function brings better results for the numeric values $R^2$ and $\bar{R}^2$, which means that the model is slightly better than the previous one.
+
+Let's now see from the plots how the linear regression model behaves, with this new response values.
+
+```{r, fig.width=8, fig.height=6}
+par(mfrow=c(2,2))
+mod.out <- lm(ViolentCrimesPerPop.log~., data=communities.lm)
+plot(mod.out)
+par(mfrow=c(1,1))
+```
+
+From the first graph it is possible to see that the residuals lie in a smaller range than before.
+
+Values in the Q-Q plot follow more the dotted diagonal, which means that now residuals' distribution is more similar to a normal distribution.
+
+Records 22 and 128 are still highlighted as outliers.
+
+Given this improvements, from now on, we will use the log transformed version for the response variable for linear regression models.
+
+\newpage
+
+# Feature selection
+
+Previous regression models had to deal with 78 features, which is a high value. Easier models, which take into account only a minority of the features, can replace the previous linear regression, without a significant worsening of fit.
+
+Therefore, the next and most important step is to detect and remove the less useful features in the dataset. To get an overview of the correlation between variables, a correlation matrix is computed.
+
+## Multicollinearity
+
+```{r,fig.width=5.5, fig.height=5.5, warning=FALSE, message=FALSE,fig.align="center"}
+#display correlation matrix
+
+corr <- cor(communities.mod)
+library(ggcorrplot)
+ggcorrplot(corr,tl.cex = 0,colors = c("1100FF", "white", "red"),
+           tl.col = "white",
+           title = "Correlation heatmap for all the variables")
+```
+
+To make the correlation plot easier to visualize, we computed the mean of the values of each row (and column) and kept only the rows (and columns) for which the mean of its elements is greater than a certain threshold. This allows to visualize only the one that are highly correlated with eachother. 
+
+To make the visualization even easier, the variables are clustered with a hierarchical clustering algorithm. In this way, variables that are most correlated with eachother are placed closer and it's easier to identify them. Also, only the lower diagonal is presented, in order to reduce the complexity of the plot.
+
+
+```{r,fig.width=8, fig.height=8,fig.align="center"}
+corr.imp = cor(communities.mod)
+diag(corr.imp) <- 0
+to.remove = c()
+for (i in c(1:dim(corr.imp)[1]))
+  if(mean(abs(corr.imp)[i,])<0.23)
+    to.remove <- c(to.remove,i)
+corr.imp <- corr.imp[-to.remove,]
+corr.imp <- corr.imp[,-to.remove]
+ggcorrplot(corr.imp,colors = c("1100FF", "white", "red"),tl.srt=90,hc.order = TRUE,type ="lower",
+           title = "Correlation heatmap on chosen variables")
+```
+
+Now we want to identify highly correlated couples, each of whom will give a feature to delete from the model. To do this, we filter and keep the pairs of variables that have a correlation \> 0.9 between eachother.
+
+
+```{r}
+#detect highly correlated pairs of features
+upp <- lower.tri(corr, diag = FALSE)
+corr.low <- replace(corr, !upp, 0)
+corr.mask <- abs(corr.low) > 0.9
+corrs <- which(corr.mask, arr.ind=TRUE, useNames = FALSE)
+
+pair.a <- colnames(communities.mod)[corrs[,1]]
+pair.b <- colnames(communities.mod)[corrs[,2]]
+
+pairs.corr <- cbind(pair.a,pair.b)
+pairs.corr
+```
+
+
+\newpage
+### VIF
+
+The Variance Inflation Factor (VIF) is a measure of the amount of collinearity between a given set of features, in a regression model.
+
+The VIF factor of $\hat{\beta}_j$ is computed with the formula: \[VIF (\hat{\beta}\_j)= \frac{1}{1-R^2_{X_j|X_{-j}}}\].
+
+The higher the VIF and the most collinearity is associated to that feature. A value of 5 or 10 is usually associated with a high problem of collinearity.
+
+```{r, warning=FALSE, message=FALSE}
+library(car)
+mod.out <- lm(ViolentCrimesPerPop.log~., data=communities.lm)
+vifs <- sort(vif(mod.out),decreasing = TRUE)
+head(vifs,15)
+tail(vifs,15)
+```
+
+VIF's values are well above the 5-10 threshold for most of the variables. From the pairs of correlated variable, we now remove the member of the pair that has the highest VIF index: the idea is, for each pair of correlated variables, to keep the one that has the lighter multicollinearity problem. 
+
+```{r}
+#detect the feature with highest VIF in every couple
+
+drops <- c()
+for (i in c(1:length(pair.a))) {
+  if (vifs[pair.a[i]] > vifs[pair.b[i]]) {
+    drops <- c(drops, pair.a[i])
+  }
+  else {
+    drops <- c(drops, pair.b[i])
+  }
+}
+drops
+```
+These are the variables that we removed after this process.
+
+```{r}
+#drop detected features
+
+communities.cor1 <- communities.lm[ , !(names(communities.lm) %in% drops)]
+```
+
+
+## Stepwise selection
+
+From the model obtained after filtering for correlation and VIF, we apply backward (and forward) stepwise selection to select the best attributes. Both backward and forward selection are computed with three different techniques: Mallow $C_p$, BIC and $\bar{R}^2$.
+
+### Backward Selection
+
+```{r}
+library(leaps)
+
+#perform backward selection
+regfit.bkw <- regsubsets(ViolentCrimesPerPop.log~., data=communities.cor1,
+                         nvmax=50,method="backward")
+
+```
+
+#### Mallow's Cp {-}
+
+```{r,fig.width=12, fig.height=5, warning=FALSE, fig.align="center", crop=TRUE}
+#plots of backward selection using Mallow C_p
+
+par(mfrow=c(1,2))
+plot(regfit.bkw,scale="Cp",labels=NULL)
+plot(summary(regfit.bkw)$cp,type='l')
+min.cp <- which.min(summary(regfit.bkw)$cp)
+points(min.cp,summary(regfit.bkw)$cp[min.cp],col="red",cex=2,pch=20)
+```
+
+```{r}
+#coefficients associated to the best model identified above
+
+best.bkw.cp <- coef(regfit.bkw,min.cp)
+best.bkw.cp
+```
+
+
+#### BIC {-}
+
+```{r,fig.width=12, fig.height=5, warning=FALSE, fig.align="center", crop=TRUE}
+#plots of backward selection using BIC
+
+par(mfrow=c(1,2))
+plot(regfit.bkw,scale="bic",labels=NULL)
+plot(summary(regfit.bkw)$bic,type='l')
+min.bic <- which.min(summary(regfit.bkw)$bic)
+points(min.bic,summary(regfit.bkw)$bic[min.bic],col="red",cex=2,pch=20)
+par(mfrow=c(1,1))
+
+```
+```{r}
+#coefficients associated to the best model identified above
+
+best.bkw.bic <- coef(regfit.bkw,min.bic)
+best.bkw.bic
+```
+
+
+#### Adjusted R^2 {-}
+
+```{r,fig.width=12, fig.height=5, warning=FALSE, fig.align="center", crop=TRUE}
+#plots of backward selection using adjusted R^2
+
+par(mfrow=c(1,2))
+plot(regfit.bkw,scale="adjr2",labels=NULL)
+plot(summary(regfit.bkw)$adjr2,type='l')
+max.adjr2 <- which.max(summary(regfit.bkw)$adjr2)
+points(max.adjr2,summary(regfit.bkw)$adjr2[max.adjr2],col="red",cex=2,pch=20)
+par(mfrow=c(1,1))
+```
+
+
+```{r}
+#coefficients associated to the best model identified above
+
+best.bkw.adjr2 <- coef(regfit.bkw,max.adjr2)
+best.bkw.adjr2
+```
+\newpage
+
+### Forward Selection
+
+```{r, warning=FALSE}
+library(leaps)
+#perform forward selection
+
+regfit.fwd <- regsubsets(ViolentCrimesPerPop.log~., data=communities.cor1,
+                         nvmax=50,method="forward")
+
+```
+
+#### Mallow's Cp {-}
+
+```{r,fig.width=12, fig.height=5, warning=FALSE, fig.align="center", crop=TRUE}
+#plots of forward selection using Mallow C_p
+
+par(mfrow=c(1,2))
+plot(regfit.fwd,scale="Cp",labels=NULL)
+plot(summary(regfit.fwd)$cp,type='l')
+min.cp <- which.min(summary(regfit.fwd)$cp)
+points(min.cp,summary(regfit.fwd)$cp[min.cp],col="red",cex=2,pch=20)
+```
+
+```{r}
+#coefficients associated to the best model identified above
+
+best.fwd.cp <- coef(regfit.fwd,min.cp)
+best.fwd.cp
+```
+
+
+#### BIC {-}
+
+```{r,fig.width=12, fig.height=5, warning=FALSE, fig.align="center", crop=TRUE}
+#plots of forward selection using BIC
+
+
+par(mfrow=c(1,2))
+plot(regfit.fwd,scale="bic",labels=NULL)
+plot(summary(regfit.fwd)$bic,type='l')
+min.bic <- which.min(summary(regfit.fwd)$bic)
+points(min.bic,summary(regfit.fwd)$bic[min.bic],col="red",cex=2,pch=20)
+par(mfrow=c(1,1))
+```
+
+```{r}
+#coefficients associated to the best model identified above
+
+best.fwd.bic <- coef(regfit.fwd,min.bic)
+best.fwd.bic
+```
+
+#### Adjusted R^2 {-}
+
+```{r,fig.width=12, fig.height=5, warning=FALSE, fig.align="center", crop=TRUE}
+#plots of forward selection using adjusted R^2
+
+par(mfrow=c(1,2))
+plot(regfit.fwd,scale="adjr2",labels=NULL)
+plot(summary(regfit.fwd)$adjr2,type='l')
+max.adjr2 <- which.max(summary(regfit.fwd)$adjr2)
+points(max.adjr2,summary(regfit.fwd)$adjr2[max.adjr2],col="red",cex=2,pch=20)
+par(mfrow=c(1,1))
+
+```
+
+
+```{r}
+#coefficients associated to the best model identified above
+
+best.fwd.adjr2 <- coef(regfit.fwd,max.adjr2)
+best.fwd.adjr2
+```
+
+
+
+
+\newpage
+
+## Lasso regression
+
+The LASSO regression represents a valid alternative to the traditional linear regression. They differ because LASSO adds a penalty term, whose aim is to shrink to 0 coefficients related to less important features for the model. We perform LASSO regression on the full set of features.
+
+```{r, warning=FALSE, message=FALSE}
+library(glmnet)
+# alpha=0 for ridge, alpha=1 for lasso
+#
+lasso.mod <- glmnet(communities.lm, ViolentCrimesPerPop, alpha=1)
+best.lasso <- coef(lasso.mod, s = 0.002)#specific lambda to make a comparison
+# best.lasso <- predict(lasso.mod, s=10, type="coefficients")
+best.lasso <- data.frame(as.matrix(best.lasso))
+colnames(best.lasso) <- "lasso"
+best.lasso <- best.lasso[ best.lasso$lasso != 0,, drop=FALSE]
+best.lasso
+```
+
+With the following plot we can see how this regression shrinks to 0 many coefficients, by increasing the $\lambda$ constant.
+
+```{r, fig.height=6, fig.width=8}
+#plots of LASSO coefficents
+
+par(mar=c(4,5,6,2))
+plot(lasso.mod, main = "Coefficients shrinking to zero in lasso regression")
+
+```
+
+\newpage
+
+## Summing up the results
+
+We performed 3 methods to select a subset of important features:
+
+-   Correlation + VIF + Forward selection
+
+-   Correlation + VIF + Backward selection
+
+-   LASSO regression
+
+Each one of this method gave us a subset of important features. Now we want to summarize this into a unique set of important features that can help us to get some insights on the "risk factors" for violent crime.
+
+Among the three, the BIC is the one that penalises the most models with many variables. So we choose it in order to compare stepwise selections with LASSO regression.
+
+```{r}
+#pick best configurations using BIC technique
+best.bkw.bic <- data.frame(best.bkw.bic)
+best.fwd.bic <- data.frame(best.fwd.bic)
+```
+
+These important features are selected by summing the coefficients of the three methods and picking the highest values according to their absolute value.
+
+```{r, tidy=FALSE, warning=FALSE, message=FALSE}
+library(dplyr)
+library(tibble)
+
+#sum coefficients of different methods
+important.features <- full_join(best.lasso %>% rownames_to_column(), 
+           best.bkw.bic %>% rownames_to_column(), by = "rowname") %>%
+  full_join(.,best.fwd.bic %>% rownames_to_column(), by = "rowname") %>% # perfom outer join
+  mutate_if(is.numeric,coalesce,0) %>% # na's to 0
+  mutate(Result = lasso + best.bkw.bic + best.fwd.bic) # sum each column
+
+important.features <- important.features[order(abs(important.features$Result),
+                                               
+                                               decreasing = TRUE),] # order by sum
+
+important.features <- important.features[important.features$rowname != "(Intercept)", , 
+                                         
+                                         drop = FALSE]
+important.features
+```
+
+The following histogram plots the 20 most important features.
+
+```{r, fig.height=7, fig.width=8}
+par(mar=c(12,5,3,2))
+barplot(`colnames<-`(rbind(important.features[1:20,]$Result), (important.features[1:20,]$rowname)),
+        las=2,
+        main = "Top 20 most important features and their impact",
+        col = "lightblue",
+        cex.names=0.9)
+title(xlab = "Variable names", mgp = c(11, 1, 0))    
+title(ylab = "Sum of coefficients", mgp = c(3, 1, 0))   
+```
+
+```{r}
+feature <- colnames(communities)
+cat <- c("Names","Names","Population","Households","Ethnicity","Ethnicity","Ethnicity","Ethnicity","Age","Age","Age","Population","Income","Income","Income","Income","Income","Income","Income","Income","Income","Income","Income","Income","Income","Education","Education","Education","Employment","Employment","Employment","Employment","Employment","Employment","Family","Family","Family","Family","Family","Family","Family","Family","Family","Family","Family","Immigrants","Immigrants","Immigrants","Households","Households","Households","Households","Households","Households","Households","Households","Households","Households","Households","Households","Households","Households","Households","Households","Households","Households","Households","Households","Households","Homeless","Homeless","Immigrants","Households","Population","Population","Population","Population","Target")
+features.data <- data.frame(feature,cat)
+```
+
+```{r}
+#associated every "important feature" to its category
+
+important.features.cat <- inner_join(important.features, 
+                                     features.data,
+                                     by = c("rowname" = "feature"))
+```
+
+With the following pie chart, the aim is to visualize which categories of features are the most relevant for our models.
+
+
+```{r, fig.width=4,fig.height=4, fig.align='center',tidy=TRUE, crop=TRUE}
+
+par(mar=c(0,3,0,3))
+#pie chart of categories
+important.cat <- aggregate(abs(important.features.cat$Result),
+                           
+                           by=list(Category=important.features.cat$cat), 
+                           
+                           FUN=sum)
+
+pie(important.cat$x, labels = important.cat$Category,  
+    col = rainbow(9) )
+```
+As we can see, familiar aspects are the most relevant, together income and household aspects.
+
+
+\newpage
+
+# Best regressor
+
+After having determined the most important features that are linked to the target variable, we want to test if this subset of features can be used to perform prediction on new data. In practice, we want to test the generalization capabilities of our model. 
+
+## Ridge regression 
+
+Ridge regression is another type of regularized regression: in this case an $L2$ norm penalty term is applied to shrink coefficients. This technique is of less help in detecting a subset of relevant features, since the coefficients are not usually shrank to 0, but provides a model that does not overfit on training data and should generalize well. So, in our case, it is used to compare its performances with a linear model trained only on the selected subset of features in order to evaluate the generalization capabilities of our model. Note that the ridge regression model is trained on the whole set of features.
+
+```{r}
+#Ridge regression
+ridge.mod <- cv.glmnet(as.matrix(communities.lm), ViolentCrimesPerPop, alpha=0, nfolds = 5)
+ridge.mod$lambda.min #best lambda found with cross validation
+predictions.ridge.train <- predict(ridge.mod, as.matrix(communities.lm), s=ridge.mod$lambda.min)
+predictions.ridge.test <- predict(ridge.mod, as.matrix(communities.lm.test), s=ridge.mod$lambda.min)
+
+```
+
+```{r, warning=FALSE, message=FALSE}
+#evaluate Ridge regressions over train and test sets
+library(Metrics)
+ridge.train <- rmse(ViolentCrimesPerPop, predictions.ridge.train)
+ridge.test <- rmse(communities.mod.test$ViolentCrimesPerPop, predictions.ridge.test)
+ridge.train
+ridge.test
+```
+
+## Linear regression with selected features
+
+The results provided by the Ridge regression are compared to a linear regressor which considers only the selected features as in section 4.4.
+
+
+```{r}
+mod.out <- lm(ViolentCrimesPerPop~., data=communities.lm[important.features$rowname[-2]])
+summary(mod.out)
+```
+
+```{r}
+#evaluate predictions over train and test set
+predictions.lm.train <- predict(mod.out, communities.lm)
+predictions.lm.test <- predict(mod.out, communities.lm.test)
+lm.train <- rmse(ViolentCrimesPerPop, predictions.lm.train)
+lm.test <- rmse(communities.mod.test$ViolentCrimesPerPop, predictions.lm.test)
+lm.train
+lm.test
+```
+
+```{r}
+#comparison between these last two models
+comparison <- data.frame(rbind(cbind(ridge.train,ridge.test),
+                               cbind(lm.train,lm.test)))
+colnames(comparison) <- c("Ridge Regression","LM with selected variables")
+rownames(comparison) <- c("Train","Test")
+comparison
+```
+
+The results, in terms of Root Mean Squared Error, are comparable, so the feature that we selected are actually good predictors.
+
+\newpage
+# Does ethnicity play a role?
+
+In this section we want to inspect if ethnicity does play a role in the context of crime rate, and if some commonplace about ethnicity and crime can be debunked.
+
+```{r}
+#correlation between african american people and violent crimes
+cor(racepctblack,ViolentCrimesPerPop)
+```
+
+Regression models provided in this study highlight a strong correlation between the percentage of African-american people living in a community and the number of violent crimes. Our aim is to determine if this link is actually the effect of some other risk factors with are associated with specific ethnicity groups.
+
+## Correlations
+
+Let's see which are the most correlated variables to `racepctblack`, the percentage of African-american population in the community.
+
+```{r}
+#most correlated features to "racepctblack"
+
+mask.black <- corr[,which(colnames(communities.mod)=="racepctblack")]
+corr.black <- mask.black[abs(mask.black) > 0.4] # remove "racePctWhite" from the list
+corr.black <- corr.black[names(corr.black) != "racePctWhite"]
+corr.black <- corr.black[names(corr.black) != "racepctblack"]
+
+print.data.frame(data.frame(corr.black))
+```
+
+Let's see which are the most correlated variables to `racePctWhite`, the percentage of Caucasian population in the community.
+
+```{r}
+#most correlated features to "racepctblack"
+
+mask.white <- corr[,which(colnames(communities.mod)=="racePctWhite")]
+corr.white <- mask.white[abs(mask.white) > 0.4] # remove black, whites
+corr.white <- corr.white[names(corr.white) != "racePctWhite"]
+corr.white <- corr.white[names(corr.white) != "racepctblack"]
+corr.white <- corr.white[names(corr.white) != "racePctHisp"]
+
+corr.white <- data.frame(corr.white)
+print(corr.white)
+```
+
+We select only the features that they have in common.
+
+```{r}
+merged <- merge(corr.black,
+      corr.white,
+      by=0)
+colnames(merged) <- c("variables", "african-american", "caucasian")
+```
+
+We associate each variable with its correlation on `ViolentCrimesPerPop`
+
+```{r}
+violence.corr <- c()
+for (i in merged[,1]) {
+  violence.corr <- c(violence.corr,(corr[i,"ViolentCrimesPerPop"]))
+}
+```
+
+And keep only the variables that presents a correlation with `ViolentCrimesPerPop` superior to $0.5$.
+
+```{r}
+merged <- cbind(merged, violence.corr)
+merged <- merged[ abs(merged$violence.corr) > 0.5,, drop=FALSE]
+merged
+```
+
+The previous table shows that `racepctblack` is highly correlated with the other features which have high coefficients in our regressions, while `racePctWhite` is linked to many features which have negative coefficients.
+
+The following barplot highlights how different are the correlations of `racepctblack` and `racePctWhite` for all these features. Actually we see that for what concerns "risk factors" for crime, African-american and Caucasian population presents a very contrasting behaviour: those features that are positively correlated with African-american people are negatively correlated to Caucasian people, and vice-versa. This suggests that the background -- in terms of family, social and economic aspects -- are very different between these two ethnicity group, and thus the different behaviour with respect to crime.
+
+```{r, fig.height=7, fig.width=9}
+
+par(mar=c(13,5,2,2))
+barplot(`colnames<-`(t(merged[2:3]), merged[,1]), beside=TRUE, 
+        legend.text = TRUE, 
+        args.legend = list(x = "topleft", inset=c(-0.10, 0)),
+        col = c("black", "grey"),
+        main = "Most correlated variables to african-american and caucasian people",
+        las=2)
+
+title(xlab = "Variable names", mgp = c(12, 1, 0))    
+title(ylab = "Correlation", mgp = c(3, 1, 0))  
+```
+
+## Partial correlations
+
+Let now consider the partial correlation of these two ethnies with respect to the other features. Partial correlation measures the degree of association between two random variables, with the effect of a set of controlling random variables removed.
+
+The partial correlation between `racepctblack` and `ViolentCrimesPerPop` is 0.078, a strong decrease when compared to the correlation value of 0.629.
+
+```{r}
+mod1 <- lm(racepctblack ~. -ViolentCrimesPerPop, data=communities.mod)
+mod2 <- lm(ViolentCrimesPerPop ~. -racepctblack , data=communities.mod)
+cor(residuals(mod1), residuals(mod2))
+```
+
+```{r}
+S <- cov(communities.mod)
+part.cor <- -cov2cor(solve(S))
+```
+
+In the following barplot we compare, for each ethnic group, the correlation and partial correlation with crime rate. We see a very strong "decrease" for `racepctblack`: this further reinforces the intuition that this ethnic group is highly --negatively-- influenced by its environmental background. 
+
+The partial correlation values for the four ethnic groups are actually not much different, suggesting that, filtering out the background of each group, ethnicity do not play a significant role in determining the crime rate.
+
+```{r}
+cor(HispPerCap,ViolentCrimesPerPop)
+```
+
+
+
+```{r}
+corr <- cor(communities.mod)
+S <- cov(communities.mod)
+part.cor <- -cov2cor(solve(S))
+
+
+par(mar=c(4,3,1,0))
+ethicity.cor <- c()
+ethicity.cor <- c(ethicity.cor,corr[3,76])
+ethicity.cor <- c(ethicity.cor,corr[4,76])
+ethicity.cor <- c(ethicity.cor,corr[5,76])
+ethicity.cor <- c(ethicity.cor,corr[6,76])
+ethicity.cor <- t(as.matrix(ethicity.cor))
+rownames(ethicity.cor) <- c("Correlation")
+ethicity.part.cor <- c()
+ethicity.part.cor <- c(ethicity.part.cor,part.cor[3,76])
+ethicity.part.cor <- c(ethicity.part.cor,part.cor[4,76])
+ethicity.part.cor <- c(ethicity.part.cor,part.cor[5,76])
+ethicity.part.cor <- c(ethicity.part.cor,part.cor[6,76])
+ethicity.part.cor <- t(as.matrix(ethicity.part.cor))
+rownames(ethicity.part.cor) <- c("Partial Correlation")
+ethicity.names <- c("racepctblack","whitePerCap","AsianPerCap","HispPerCap")
+barplot(`colnames<-`(rbind(ethicity.cor,ethicity.part.cor), (ethicity.names)),
+        beside = TRUE,
+        col = c("lightgreen", "lightblue"),
+        legend.text = TRUE)
+title(xlab = "Variable names", mgp = c(3, 1, 0))    
+title(ylab = "Numeric value", mgp = c(3, 1, 0)) 
+
+```
+
+
+
+\newpage
+# Data over US states
+
+Now the focus is over states of the US territory, instead of communities. Considering areas with an elevated presence of a given ethnic group, the aim is to discover the features that are more linked to violent crimes in these zones, in particular it is of interest the comparison with the case of the whole US.
+
+## Maps plot
+
+To visualise the distribution of data, records are grouped by state. Numerical features of every state are computed with a weighted mean over the different communities belonging to that specific territory.
+
+```{r, warning=FALSE, message=FALSE, fig.width=9, fig.height=5}
+
+library(dplyr)
+library(ggplot2)
+library(usmap)
+
+
+pre_state <- communities.tt #dataset with 1994 rows and 80 columns
+
+pre_state$totBlack <- pre_state$population * pre_state$racepctblack/100
+pre_state$totWhite <- pre_state$population * pre_state$racePctWhite/100
+pre_state$totAsian <- pre_state$population * pre_state$racePctAsian/100
+pre_state$totHisp <- pre_state$population * pre_state$racePctHisp/100
+pre_state$ViolentCrimesbyPop <- pre_state$population * pre_state$ViolentCrimesPerPop
+
+pre_state2 <- aggregate(cbind(pre_state$population, pre_state$totBlack,pre_state$totWhite, pre_state$totAsian, pre_state$totHisp, pre_state$ViolentCrimesPerPop), by = list(Category = pre_state$state), FUN = sum) #dataset grouped by state
+
+colnames(pre_state2) <- c("state", "totPop", "totBlack", "totWhite", "totAsian","totHisp", "totViolentCrimesPerState")
+
+pre_state2$totBlack_pct <- pre_state2$totBlack / pre_state2$totPop
+pre_state2$totWhite_pct <- pre_state2$totWhite / pre_state2$totPop
+pre_state2$totAsian_pct <- pre_state2$totAsian / pre_state2$totPop
+pre_state2$totHisp_pct <- pre_state2$totHisp / pre_state2$totPop
+pre_state2$totViolentCrimes <- pre_state2$totViolentCrimesPerState / pre_state2$totPop
+
+state_vec = c('AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','ID','IN','IA','KS','KY','LA','ME','MD','MA','MN','MS','MO','NV','NH','NJ','NM','NC','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WV','WI','WY','WA')
+
+plot_usmap(data = pre_state2, values = "totBlack_pct", include = state_vec, color = "red") + 
+  scale_fill_continuous(name = "Percentage of african-american people", label = scales::comma) + 
+  theme(legend.position = "right")
+  
+plot_usmap(data = pre_state2, values = "totWhite_pct", include = state_vec,color = "red") + 
+  scale_fill_continuous(name = "Percenatge of caucasian people", label = scales::comma) + 
+  theme(legend.position = "right")
+  
+plot_usmap(data = pre_state2, values = "totAsian_pct", include = state_vec,color = "red") + 
+  scale_fill_continuous(name = "Percentage of asian people", label = scales::comma) + 
+  theme(legend.position = "right")
+  
+plot_usmap(data = pre_state2, values = "totHisp_pct", include = state_vec, color = "red") + 
+  scale_fill_continuous(name = "Percentage of hispanic people", label = scales::comma) + 
+  theme(legend.position = "right")
+
+plot_usmap(data = pre_state2, values = "totViolentCrimes", include = state_vec,color = "red") + 
+  scale_fill_continuous(name = "Total number of violent crimes", label = scales::comma) + 
+  theme(legend.position = "right")
+
+```
+
+By the previous maps, it is possible to highlight a south-west area which has a significant presence of hispanic people, while a south-east area has a high percentage of African-american people.
+
+The south-west area considered is formed by: California, Nevada, New Mexico, Arizona and Texas.
+
+The south-east area considered comprehends: Louisiana, Mississippi, Alabama, Georgia, South Carolina, North Carolina and Tennessee.
+
+```{r}
+
+drops2 <- c("communityname","OtherPerCap")
+communities.tt <- communities.tt[ , !(names(communities.tt) %in% drops2)]
+
+communities.SW <- communities.tt[ which (communities.tt$state == 'CA' | communities.tt$state == 'TX' | communities.tt$state == 'NM' | communities.tt$state == 'AZ' | communities.tt$state == 'NV'), ]
+communities.SW_violent <- communities.SW["ViolentCrimesPerPop"]
+
+communities.SE <- communities.tt[ which (communities.tt$state == 'LA' | communities.tt$state == 'MS' | communities.tt$state == 'AL' | communities.tt$state == 'GE' | communities.tt$state == 'SC', communities.tt$state == 'NC', communities.tt$state == 'TN'), ]
+
+communities.SE_violent <- communities.SE["ViolentCrimesPerPop"]
+
+drops3 <- c("state", "ViolentCrimesPerPop")
+communities.SW <- communities.SW[ , !(names(communities.SW) %in% drops3)]
+communities.SE <- communities.SE[ , !(names(communities.SE) %in% drops3)]
+
+ppSW = preProcess(communities.SW, method = "range")
+ppSE = preProcess(communities.SE, method = "range")
+
+communities.SW <- predict(ppSW, communities.SW)
+communities.SE <- predict(ppSE, communities.SE)
+
+```
+
+## LASSO regression 
+
+In order to detect which features are more linked to violent crimes in this areas, LASSO regressions are provided. The most important features are chosen according to the absolute value of the coefficients.
+
+```{r, fig.height=4, fig.width=6}
+X <- communities.SW
+y <- communities.SW_violent$ViolentCrimesPerPop
+
+set.seed(1)
+
+#train and test split
+
+train <- sample(1:nrow(X), nrow(X)/2)
+test <- (-train)
+y.test <- y[test]
+
+X = as.matrix(X)
+
+#cross validation for values of Lasso
+cv.lassoSW <- cv.glmnet(X[train, ], y[train], alpha = 1, nfold = 5)
+
+plot(cv.lassoSW)
+
+#label best parameter
+i.bestlam <- which.min(cv.lassoSW$cvm)
+
+bestlam <- cv.lassoSW$lambda[i.bestlam]
+
+#train new LASSO over the best parameter
+lassoSW <- glmnet(X, y, alpha = 1)
+pred <-predict(lassoSW, type = "coefficients", s = bestlam)
+
+best.lasso <- coef(lassoSW, s = bestlam)
+# best.lasso <- predict(lasso.mod, s=10, type="coefficients")
+best.lasso <- data.frame(as.matrix(best.lasso))
+best.lasso <- best.lasso[ best.lasso$s1 != 0,, drop=FALSE]
+
+#pick the 10 mostly linked features to crime
+head(arrange(best.lasso,desc(abs(s1))), n = 15) #return features linked to highest values
+
+
+```
+
+```{r, fig.height=4, fig.width=6}
+
+X <- communities.SE
+y <- communities.SE_violent$ViolentCrimesPerPop
+
+set.seed(1)
+
+#train and test split
+train <- sample(1:nrow(X), nrow(X)/7*6)
+test <- (-train)
+y.test <- y[test]
+
+X = as.matrix(X)
+
+#cross validation for values of Lasso
+cv.lassoSE <- cv.glmnet(X[train, ], y[train], alpha = 1, nfold = 5)
+
+plot(cv.lassoSW)
+
+i.bestlam <- which.min(cv.lassoSE$cvm)
+
+bestlam <- cv.lassoSE$lambda[i.bestlam]
+
+#train new LASSO over the best parameter
+lassoSE <- glmnet(X, y, alpha = 1)
+pred <- predict(lassoSE, type = "coefficients", s = bestlam)
+
+best.lasso <- coef(lassoSE, s = bestlam)
+# best.lasso <- predict(lasso.mod, s=10, type="coefficients")
+best.lasso <- data.frame(as.matrix(best.lasso))
+best.lasso <- best.lasso[ best.lasso$s1 != 0,, drop=FALSE]
+
+#pick the 10 mostly linked features to crime
+head(arrange(best.lasso,desc(abs(s1))), n = 10) #return features linked to highest values
+
+```
+
+Comparing the most influent features of these two zones with the ones regarding the whole dataset, confirms that the aspects more linked to violent crimes regard families. More in detail, the rate of kids with both parents is, in these areas, the most important feature, highly negatively correlated to violent crimes. In south-east states there is also a strong contribute from features regarding the percentage of people who use public transport, which usually is linked to poverty, and the urbanisation, given that these states are highly densely populated.
+
+# Conclusion
+
+Through this paper, we have studied the influence of several factors, belonging to different categories, over the violent crimes of US communities.
+From these analysis it can be stated that the most important features regard family conditions, with an high remark over the situation of kids.
+
+Another important chapter is dedicated to explain the high correlation between violent crimes and the percentage of African-american people, which is due to bad socio-economic conditions this ethnic group experiences.
+
+The South-Easter and South-Western zones, which have a considerable percentage of, --respectively-- Hispanic people and African-american people, share the set of important features found for the whole US case.
+
+\newpage
+
+# Appendix: Attribute Information {-}
+
+We report the meaning of each variable as described in the source of the dataset.
+
+ -   `state`: US state (by number) - not counted as predictive above, but if considered, should be consided nominal (nominal) 
+ -   `communityname`: community name - not predictive - for information only (string) 
+ -   `householdsize`: mean people per household (numeric - decimal) 
+
+
+**Population** 
+
+
+ -   `population`: population for community (numeric - decimal) 
+ -   `PopDens`: population density in persons per square mile (numeric - decimal) 
+ -   `PctUsePubTrans`: percent of people using public transit for commuting (numeric - decimal) 
+ -   `pctUrban`: percentage of people living in areas classified as urban (numeric - decimal) 
+ -   `PctSameCity85`: percent of people living in the same city as in 1985 (5 years before) (numeric - decimal) 
+ -   `PctSameState85`: percent of people living in the same state as in 1985 (5 years before) (numeric - decimal) 
+
+
+ **Ethnicity** 
+
+
+ -   `racepctblack`: percentage of population that is african american (numeric - decimal) 
+ -   `racePctWhite`: percentage of population that is caucasian (numeric - decimal) 
+ -   `racePctAsian`: percentage of population that is of asian heritage (numeric - decimal) 
+ -   `racePctHisp`: percentage of population that is of hispanic heritage (numeric - decimal)
+
+
+ **Age** 
+
+
+ -   `agePct12t21`: percentage of population that is 12-21 in age (numeric - decimal) 
+ -   `agePct12t29`: percentage of population that is 12-29 in age (numeric - decimal) 
+ -   `agePct16t24`: percentage of population that is 16-24 in age (numeric - decimal) 
+ -   `pctUrban`: percentage of people living in areas classified as urban (numeric - decimal) 
+
+
+ **Income** 
+
+
+ -   `medIncome`: median household income (numeric - decimal) 
+ -   `pctWWage`: percentage of households with wage or salary income in 1989 (numeric - decimal) 
+ -   `pctWFarmSelf`: percentage of households with farm or self employment income in 1989 (numeric - decimal) 
+ -   `pctWInvInc`: percentage of households with investment / rent income in 1989 (numeric - decimal) 
+ -   `pctWSocSec`: percentage of households with social security income in 1989 (numeric - decimal) 
+ -   `pctWPubAsst`: percentage of households with public assistance income in 1989 (numeric - decimal) 
+ -   `pctWRetire`: percentage of households with retirement income in 1989 (numeric - decimal) 
+ -   `whitePerCap`: per capita income for caucasians (numeric - decimal) 
+ -   `blackPerCap`: per capita income for african americans (numeric - decimal) 
+ -   `indianPerCap`: per capita income for native americans (numeric - decimal) 
+ -   `AsianPerCap`: per capita income for people with asian heritage (numeric - decimal) 
+ -   `OtherPerCap`: per capita income for people with 'other' heritage (numeric - decimal) 
+ -   `HispPerCap`: per capita income for people with hispanic heritage (numeric - decimal) 
+ -   `PctPopUnderPov`: percentage of people under the poverty level (numeric - decimal) 
+
+
+ **Education** 
+
+
+ -   `PctLess9thGrade`: percentage of people 25 and over with less than a 9th grade education (numeric - decimal) 
+ -   `PctNotHSGrad`: percentage of people 25 and over that are not high school graduates (numeric - decimal) 
+ -   `PctBSorMore`: percentage of people 25 and over with a bachelors degree or higher education (numeric - decimal) 
+
+
+ **Employment** 
+
+
+ -   `PctUnemployed`: percentage of people 16 and over, in the labor force, and unemployed (numeric - decimal) 
+ -   `PctEmploy`: percentage of people 16 and over who are employed (numeric - decimal) 
+ -   `PctEmplManu`: percentage of people 16 and over who are employed in manufacturing (numeric - decimal) 
+ -   `PctEmplProfServ`: percentage of people 16 and over who are employed in professional services (numeric - decimal) 
+ -   `PctOccupManu`: percentage of people 16 and over who are employed in manufacturing (numeric - decimal) 
+ -   `PctOccupMgmtProf`: percentage of people 16 and over who are employed in management or professional occupations (numeric - decimal) 
+
+
+ **Family** 
+
+
+ -   `MalePctDivorce`: percentage of males who are divorced (numeric - decimal) 
+ -   `MalePctNevMarr`: percentage of males who have never married (numeric - decimal) 
+ -   `FemalePctDiv`: percentage of females who are divorced (numeric - decimal) 
+ -   `TotalPctDiv`: percentage of population who are divorced (numeric - decimal) 
+ -   `PctFam2Par`: percentage of families (with kids) that are headed by two parents (numeric - decimal) 
+
+
+ **Children**
+
+
+ -   `PctKids2Par`: percentage of kids in family housing with two parents (numeric - decimal) 
+ -   `PctYoungKids2Par`: percent of kids 4 and under in two parent households (numeric - decimal) 
+ -   `PctTeen2Par`: percent of kids age 12-17 in two parent households (numeric - decimal) 
+ -   `PctWorkMomYoungKids`: percentage of moms of kids 6 and under in labor force (numeric - decimal) 
+ -   `PctWorkMom`: percentage of moms of kids under 18 in labor force (numeric - decimal) 
+ -   `NumKidsBornNeverMar`: number of kids born to never married (numeric - expected to be integer) (called NumIlleg in normalized) 
+ -   `PctKidsBornNeverMar`: percentage of kids born to never married (numeric - decimal) (called PctIlleg in normalized) 
+
+
+ **Immigrants** 
+
+
+ -   `NumImmig`: total number of people known to be foreign born (numeric - decimal) 
+ -   `PctRecentImmig`: percent of *population* who have immigrated within the last 3 years (numeric - decimal) 
+ -   `PctSpeakEnglOnly`: percent of people who speak only English (numeric - decimal) 
+
+
+ **Households** 
+
+
+ -   `PctLargHouseFam`: percent of family households that are large (6 or more) (numeric - decimal) 
+ -   `PctLargHouseOccup`: percent of all occupied households that are large (6 or more people) (numeric - decimal) 
+ -   `PersPerOccupHous`: mean persons per household (numeric - decimal) 
+ -   `PersPerOwnOccHous`: mean persons per owner occupied household (numeric - decimal) 
+ -   `PersPerRentOccHous`: mean persons per rental household (numeric - decimal) 
+ -   `PctPersOwnOccup`: percent of people in owner occupied households (numeric - decimal) 
+ -   `PctPersDenseHous`: percent of persons in dense housing (more than 1 person per room) (numeric - decimal) 
+ -   `PctHousLess3BR`: percent of housing units with less than 3 bedrooms (numeric - decimal) 
+ -   `PctHousOccup`: percent of housing occupied (numeric - decimal) 
+ -   `PctHousNoPhone`: percent of occupied housing units without phone (in 1990, this was rare!) (numeric - decimal) 
+ -   `PctWOFullPlumb`: percent of housing without complete plumbing facilities (numeric - decimal) 
+ -   `OwnOccLowQuart`: owner occupied housing - lower quartile value (numeric - decimal) 
+ -   `OwnOccMedVal`: owner occupied housing - median value (numeric - decimal) 
+ -   `OwnOccHiQuart`: owner occupied housing - upper quartile value (numeric - decimal) 
+ -   `RentLowQ`: rental housing - lower quartile rent (numeric - decimal) 
+ -   `RentMedian`: rental housing - median rent (Census variable H32B from file STF1A) (numeric - decimal) 
+ -   `RentHighQ`: rental housing - upper quartile rent (numeric - decimal) 
+ -   `MedRent`: median gross rent (Census variable H43A from file STF3A - includes utilities) (numeric - decimal) 
+ -   `MedRentPctHousInc`: median gross rent as a percentage of household income (numeric - decimal) 
+ -   `MedOwnCostPctInc`: median owners cost as a percentage of household income - for owners with a mortgage (numeric - decimal) 
+ -   `MedOwnCostPctIncNoMtg`: median owners cost as a percentage of household income - for owners without a mortgage (numeric - decimal) 
+
+
+ **Homeless** 
+
+
+ -   `NumInShelters`: number of people in homeless shelters (numeric - decimal) 
+ -   `NumStreet`: number of homeless people counted in the street (numeric - decimal) 
+ -   `PctBornSameState`: percent of people born in the same state as currently living (numeric - decimal) 
+ -   `PctSameHouse85`: percent of people living in the same house as in 1985 (5 years before) (numeric - decimal) 
+ -   `PctSameCity85`: percent of people living in the same city as in 1985 (5 years before) (numeric - decimal) 
+ -   `PctSameState85`: percent of people living in the same state as in 1985 (5 years before) (numeric - decimal) 
+
+
+ **Police** 
+
+
+ -   `LemasSwFTPerPop`: sworn full time police officers per 100K population (numeric - decimal) 
+ -   `LemasSwFTFieldPerPop`: sworn full time police officers in field operations (on the street as opposed to administrative etc) per 100K population (numeric - decimal) 
+ -   `LemasTotReqPerPop`: total requests for police per 100K popuation (numeric - decimal) 
+ -   `PolicCars`: number of police cars (numeric - decimal) 
+ -   `PolicBudgPerPop`: police operating budget per population (numeric - decimal) 
+
+
+ **Police and ethnicity** 
+
+
+ -   `RacialMatchCommPol`: a measure of the racial match between the community and the police force. High values indicate proportions in community and police force are similar (numeric - decimal) 
+ -   `PctPolicWhite`: percent of police that are caucasian (numeric - decimal) 
+ -   `PctPolicBlack`: percent of police that are african american (numeric - decimal) 
+ -   `PctPolicHisp`: percent of police that are hispanic (numeric - decimal) 
+ -   `PctPolicAsian`: percent of police that are asian (numeric - decimal) 
+ -   `PctPolicMinor`: percent of police that are minority of any kind (numeric - decimal) 
+
+
+ **Police for drugs** 
+
+
+ -   `OfficAssgnDrugUnits`: number of officers assigned to special drug units (numeric - decimal) 
+ -   `PolicAveOTWorked`: police average overtime worked (numeric - decimal) 
+
+
+ **Population density** 
+
+
+ -   `PopDens`: population density in persons per square mile (numeric - decimal) 
+ -   `PctUsePubTrans`: percent of people using public transit for commuting (numeric - decimal) 
+
+
+ **Target variables** 
+
+
+ -   `ViolentCrimesPerPop`: total number of violent crimes per 100K popuation (numeric - decimal) 
